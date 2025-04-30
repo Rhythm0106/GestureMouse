@@ -4,7 +4,6 @@ import HandTrackingModule as htm
 import time
 import autopy
 
-# -------------------- Configuration --------------------
 wCam, hCam = 640, 480
 frameR = 100  # Frame Reduction
 smoothening = 7
@@ -20,10 +19,19 @@ cap.set(4, hCam)
 detector = htm.handDetector(maxHands=1)
 wScr, hScr = autopy.screen.size()
 
-# -------------------- Main Loop --------------------
 while True:
     success, img = cap.read()
-    img = detector.findHands(img)
+
+    
+    imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    imgBlur = cv2.GaussianBlur(imgGray, (5, 5), 0)
+    imgCanny = cv2.Canny(imgBlur, 50, 150)
+
+    # Highlight Canny Edges for Debugging
+    imgEdges = cv2.cvtColor(imgCanny, cv2.COLOR_GRAY2BGR)
+    imgCombined = cv2.addWeighted(img, 0.7, imgEdges, 0.3, 0)
+
+    img = detector.findHands(imgCombined)
     lmList, bbox = detector.findPosition(img)
 
     if len(lmList) != 0:
@@ -32,6 +40,7 @@ while True:
 
         fingers = detector.fingersUp()
 
+        # Draw boundary box for interaction region
         cv2.rectangle(img, (frameR, frameR), (wCam - frameR, hCam - frameR), (255, 0, 255), 2)
 
         # Moving Mode: Only Index Finger
@@ -53,12 +62,12 @@ while True:
                 cv2.circle(img, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                 autopy.mouse.click()
 
-    # Frame Rate
+    # FPS
     cTime = time.time()
     fps = 1 / (cTime - pTime)
     pTime = cTime
     cv2.putText(img, str(int(fps)), (20, 50), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 0), 3)
 
     # Display
-    cv2.imshow("Image", img)
+    cv2.imshow("Gesture Mouse", img)
     cv2.waitKey(1)
